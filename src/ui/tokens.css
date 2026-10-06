@@ -1,0 +1,85 @@
+/* Design tokens. Colours mirror src/app/palette.ts (converted to OKLCH).
+   Light "plan sheet" theme: warm paper neutrals, one ink-blue accent,
+   data colours reserved for congestion and good/bad deltas. */
+
+:root {
+  /* surfaces, tinted toward the paper hue (91) */
+  --paper: oklch(96.7% 0.008 91.5);
+  --paper-raised: oklch(98.4% 0.005 91.5);
+  --ground: oklch(93.1% 0.012 91.5);
+  --ground-line: oklch(88.9% 0.014 88.7);
+  --block: oklch(90.1% 0.015 90.2);
+
+  /* ink */
+  --ink: oklch(26.4% 0.012 264.3);
+  --ink-soft: oklch(49.2% 0.012 261.8);
+  --ink-faint: oklch(64% 0.01 260);
+  --rule: oklch(84.5% 0.012 88);
+  --rule-strong: oklch(72% 0.012 88);
+
+  /* the one accent */
+  --accent: oklch(47.9% 0.134 261.2);
+  --accent-hover: oklch(42.5% 0.13 261.2);
+  --accent-active: oklch(38% 0.12 261.2);
+  --accent-soft: oklch(92.3% 0.019 263);
+  --accent-ink: oklch(98.5% 0.006 263);
+  --hover: oklch(69% 0.082 261.5);
+
+  /* data: congestion ramp + deltas */
+  --flow-free: oklch(63.7% 0.091 156.1);
+  --flow-mid: oklch(74.1% 0.128 81.3);
+  --flow-jam: oklch(58.1% 0.152 32.7);
+  --good: oklch(50% 0.091 156.1);
+  --bad: oklch(50% 0.15 32.7);
+  --closed: oklch(54.7% 0.15 28.9);
+  --warn-bg: oklch(94.5% 0.035 70);
+  --warn-rule: oklch(78% 0.09 70);
+
+  /* signal aspects */
+  --sig-green: oklch(61.7% 0.121 154.1);
+  --sig-yellow: oklch(76.5% 0.142 81.4);
+  --sig-red: oklch(57.2% 0.169 28.3);
+
+  /* type */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  /* ratio ~1.2 */
+  --t-xs: 0.6875rem; /* 11px labels */
+  --t-sm: 0.75rem; /* 12px */
+  --t-md: 0.8125rem; /* 13px values */
+  --t-lg: 0.9375rem; /* 15px */
+  --t-xl: 1.125rem; /* 18px */
+  --t-2xl: 1.25rem; /* 20px key numbers */
+
+  /* space (4px base) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+
+  --radius: 3px;
+  --radius-sm: 2px;
+  --shadow-panel: 0 1px 0 oklch(80% 0.012 88), 0 6px 18px -8px oklch(30% 0.02 88 / 0.22);
+
+  --ease: cubic-bezier(0.25, 1, 0.5, 1); /* ease-out-quart */
+  --dur: 180ms;
+
+  --topbar-h: 44px;
+  --rail-w: 72px;
+  --dash-w: 300px;
+  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
