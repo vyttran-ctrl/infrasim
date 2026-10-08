@@ -80,6 +80,11 @@ export interface RoadNetwork {
    * Falls back to the preset's own `od`, then to uniform between all zone pairs.
    */
   od?: Partial<Record<DemandPresetId, Record<string, Record<string, number>>>>;
+  /**
+   * Geographic bbox for networks built from real map data. Local metres are an
+   * equirectangular projection around the bbox centre (see net/osm.ts projector).
+   */
+  geo?: { south: number; west: number; north: number; east: number };
   /** Attribution line to display, e.g. OSM. */
   attribution?: string;
 }
@@ -165,6 +170,18 @@ export interface MetricsSummary {
   /** trips that could not be routed (disconnected network) */
   unroutable: number;
   series: MetricsSample[];
+  /** Per-road totals for roads that saw traffic (used to show the local effect of an edit). */
+  edges?: EdgeResult[];
+}
+
+export interface EdgeResult {
+  id: string;
+  /** cars that entered the road */
+  entries: number;
+  /** mean seconds each car lost at the junction at the end of this road */
+  delay: number;
+  /** largest queue seen, cars */
+  maxQueue: number;
 }
 
 /** Per-edge live stats, `EDGE_STRIDE` floats per edge in network.edges order. */

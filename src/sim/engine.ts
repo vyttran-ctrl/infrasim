@@ -41,7 +41,7 @@ interface Pending {
 const ROAD_CLASS_SCORE: Record<string, number> = { arterial: 3, collector: 2, local: 1 };
 
 function newAccum(speed: number): EdgeAccum {
-  return { obsSpeed: speed, utilFast: 0, utilSlow: 0, queueSlow: 0, utilTime: 0, queueTime: 0, vehTime: 0, entries: 0, exits: 0, delaySum: 0 };
+  return { obsSpeed: speed, utilFast: 0, utilSlow: 0, queueSlow: 0, utilTime: 0, queueTime: 0, vehTime: 0, entries: 0, exits: 0, delaySum: 0, queueMax: 0 };
 }
 
 function headingOf(poly: Polyline, end: boolean): number {
@@ -797,6 +797,7 @@ export class Simulation implements JunctionCtx, LCContext {
       st.utilTime += u * dt;
       st.queueTime += e.queue * dt;
       st.vehTime += e.count * dt;
+      if (e.queue > st.queueMax) st.queueMax = e.queue;
       if (e.isApproach) {
         qSum += e.queue;
         nAppr++;

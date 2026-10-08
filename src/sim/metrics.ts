@@ -98,6 +98,14 @@ export class MetricsCollector {
       co2: this.fuel * CO2_PER_L,
       unroutable: this.unroutable,
       series: this.series.slice(),
+      edges: edges
+        .filter((e) => e.stats.entries > 0)
+        .map((e) => ({
+          id: e.id,
+          entries: e.stats.entries,
+          delay: e.stats.exits > 0 ? e.stats.delaySum / e.stats.exits : 0,
+          maxQueue: e.stats.queueMax,
+        })),
     };
   }
 }

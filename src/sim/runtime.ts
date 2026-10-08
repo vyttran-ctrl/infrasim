@@ -135,6 +135,8 @@ export interface EdgeAccum {
   entries: number;
   exits: number;
   delaySum: number;
+  /** largest queue seen on this edge */
+  queueMax: number;
 }
 
 export interface BoxEntry {
