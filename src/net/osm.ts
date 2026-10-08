@@ -38,14 +38,26 @@ export interface ConvertOptions {
   maxJunctions?: number;
   /** Edges shorter than this (m) are merged into a single junction. */
   mergeDistance?: number;
+  /**
+   * Street names (prefix match) that are always kept, whatever their class,
+   * e.g. residential collectors that matter locally.
+   */
+  keepNames?: string[];
 }
 
 export const HIGHWAY_PATTERN = '^(motorway|trunk|primary|secondary|tertiary|unclassified|residential)(_link)?$';
+/** Roads, basemap and buildings of every network with `geo` are all OSM data. */
 export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
 
 const CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential'] as const;
 /** Never drop below this rank when trimming junctions (keeps motorway…secondary). */
 const MIN_KEEP_RANK = 3;
+/**
+ * Within the lowest kept class, streets are dropped shortest-first: a named
+ * street survives a step if its total length (all its ways of that class) is
+ * at least this many metres.
+ */
+const STREET_LEN_STEPS = [0, 250, 450, 700, 1000, 1500];
 const SIGNAL_RADIUS = 25;
 const CROSSING_RADIUS = 25;
 const EDGE_BAND = 60;
@@ -257,16 +269,17 @@ interface Seg extends Omit<WayAttrs, 'oneway'> {
 
 interface Prepared {
   pos: Map<string, P>;
-  ways: { id: number; keys: string[]; attrs: WayAttrs }[];
+  ways: { id: number; keys: string[]; attrs: WayAttrs; streetLen: number; forced: boolean }[];
   roundabouts: Set<string>;
   /** ring radius per roundabout node, metres */
   ringRadius: Map<string, number>;
   signals: P[];
   crossings: P[];
   box: { minX: number; maxX: number; minY: number; maxY: number };
+  bbox: BBox;
 }
 
-function prepare(json: OverpassJson, bbox: BBox): Prepared {
+function prepare(json: OverpassJson, bbox: BBox, keepNames: string[] = []): Prepared {
   const proj = projector(bbox);
   const pos = new Map<string, P>();
   const signals: P[] = [];
@@ -338,15 +351,23 @@ function prepare(json: OverpassJson, bbox: BBox): Prepared {
       attrs.oneway = 1;
       [attrs.lanesF, attrs.lanesB] = [attrs.lanesB, attrs.lanesF];
     }
-    if (keys.length >= 2) ways.push({ id: w.id, keys, attrs });
+    if (keys.length >= 2) ways.push({ id: w.id, keys, attrs, streetLen: 0, forced: keepNames.some((k) => attrs.name.startsWith(k)) });
   }
+  // Street importance: total length of all ways sharing a name and class.
+  const lenOf = new Map<string, number>();
+  const keyOf = (w: Prepared['ways'][number]) => (w.attrs.name === 'Unnamed road' || w.attrs.name === 'Ramp' ? `#${w.id}` : `${w.attrs.rank}|${w.attrs.name}`);
+  for (const w of ways) {
+    const k = keyOf(w);
+    lenOf.set(k, (lenOf.get(k) ?? 0) + polyLen(w.keys.map((x) => pos.get(x)!)));
+  }
+  for (const w of ways) w.streetLen = lenOf.get(keyOf(w))!;
 
   const [minX, minY] = proj.toXY(bbox.south, bbox.west);
   const [maxX, maxY] = proj.toXY(bbox.north, bbox.east);
-  return { pos, ways, roundabouts, ringRadius, signals, crossings, box: { minX, maxX, minY, maxY } };
+  return { pos, ways, roundabouts, ringRadius, signals, crossings, box: { minX, maxX, minY, maxY }, bbox: { south: bbox.south, west: bbox.west, north: bbox.north, east: bbox.east } };
 }
 
-function buildSegments(prep: Prepared, maxRank: number): { segs: Seg[]; pos: Map<string, P>; clip: Set<string> } {
+function buildSegments(prep: Prepared, maxRank: number, minLen: number): { segs: Seg[]; pos: Map<string, P>; clip: Set<string> } {
   const pos = new Map(prep.pos);
   const clip = new Set<string>();
   const { box } = prep;
@@ -354,7 +375,7 @@ function buildSegments(prep: Prepared, maxRank: number): { segs: Seg[]; pos: Map
   const pieces: { keys: string[]; attrs: WayAttrs }[] = [];
   let ci = 0;
   for (const w of prep.ways) {
-    if (w.attrs.rank > maxRank) continue;
+    if (!w.forced && (w.attrs.rank > maxRank || (w.attrs.rank === maxRank && w.streetLen < minLen))) continue;
     let cur: string[] | null = null;
     const addClip = (a: P, b: P, t: number) => {
       const id = `c${w.id}_${++ci}`;
@@ -481,8 +502,8 @@ interface Graph {
   boundary: Set<string>;
 }
 
-function simplifyGraph(prep: Prepared, maxRank: number, mergeDistance: number): Graph {
-  const built = buildSegments(prep, maxRank);
+function simplifyGraph(prep: Prepared, maxRank: number, minLen: number, mergeDistance: number): Graph {
+  const built = buildSegments(prep, maxRank, minLen);
   const { pos, clip } = built;
   let segs = built.segs;
 
@@ -712,6 +733,7 @@ function toNetwork(g: Graph, prep: Prepared, opts: ConvertOptions): RoadNetwork 
     signals: [],
     zones,
     od: uniformOd(zones),
+    geo: { ...prep.bbox },
     attribution: OSM_ATTRIBUTION,
   };
   net = withLengths(net);
@@ -727,16 +749,21 @@ export function junctionCount(net: RoadNetwork): number {
 export function convertOverpass(json: OverpassJson, bbox: BBox, opts: ConvertOptions = {}): RoadNetwork {
   const maxJ = opts.maxJunctions ?? 80;
   const merge = opts.mergeDistance ?? 12;
-  const prep = prepare(json, bbox);
+  const prep = prepare(json, bbox, opts.keepNames);
   const present = new Set(prep.ways.map((w) => w.attrs.rank));
-  let maxRank = Math.max(-1, ...present);
-  let net = toNetwork(simplifyGraph(prep, maxRank, merge), prep, opts);
-  while (junctionCount(net) > maxJ && maxRank > MIN_KEEP_RANK) {
-    maxRank--;
-    while (maxRank > MIN_KEEP_RANK && !present.has(maxRank)) maxRank--;
-    const next = toNetwork(simplifyGraph(prep, maxRank, merge), prep, opts);
-    if (next.edges.length === 0) break;
-    net = next;
+  const top = Math.max(-1, ...present);
+  // Candidate levels, richest first: (lowest kept class, min street length in that class).
+  const levels: [number, number][] = [];
+  for (let r = top; r >= Math.min(top, MIN_KEEP_RANK); r--) {
+    if (!present.has(r) && r !== top) continue;
+    for (const L of r > MIN_KEEP_RANK ? STREET_LEN_STEPS : [0]) levels.push([r, L]);
   }
-  return net;
+  let net: RoadNetwork | null = null;
+  for (const [r, L] of levels) {
+    const next = toNetwork(simplifyGraph(prep, r, L, merge), prep, opts);
+    if (net && next.edges.length === 0) break;
+    net = next;
+    if (junctionCount(net) <= maxJ) break;
+  }
+  return net!;
 }

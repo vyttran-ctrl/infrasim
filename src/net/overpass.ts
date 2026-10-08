@@ -60,6 +60,21 @@ async function fetchOnce(url: string, query: string, signal?: AbortSignal): Prom
   }
 }
 
+/** POST a query to the Overpass endpoints in turn; resolves with the parsed JSON. */
+export async function fetchOverpass(query: string, signal?: AbortSignal): Promise<OverpassJson> {
+  let lastErr: Error | null = null;
+  for (const url of ENDPOINTS) {
+    try {
+      return await fetchOnce(url, query, signal);
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      lastErr = e as Error;
+      if (!(e instanceof FriendlyError && e.retryable)) break;
+    }
+  }
+  throw new Error(lastErr?.message ?? "Couldn't reach the OpenStreetMap server.");
+}
+
 export async function importOverpass(bbox: BBox, signal?: AbortSignal): Promise<RoadNetwork> {
   const vals = [bbox.south, bbox.west, bbox.north, bbox.east];
   if (vals.some((v) => !Number.isFinite(v)) || bbox.south >= bbox.north || bbox.west >= bbox.east || Math.abs(bbox.south) > 85 || Math.abs(bbox.north) > 85) {
@@ -72,20 +87,7 @@ export async function importOverpass(bbox: BBox, signal?: AbortSignal): Promise<
   if (width < 150 || height < 150) throw new Error('Area too small. Pick an area at least a few blocks across.');
   if (signal?.aborted) throw cancelled();
 
-  const query = overpassQuery(bbox);
-  let json: OverpassJson | null = null;
-  let lastErr: Error | null = null;
-  for (const url of ENDPOINTS) {
-    try {
-      json = await fetchOnce(url, query, signal);
-      break;
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') throw e;
-      lastErr = e as Error;
-      if (!(e instanceof FriendlyError && e.retryable)) break;
-    }
-  }
-  if (!json) throw new Error(lastErr?.message ?? "Couldn't reach the OpenStreetMap server.");
+  const json = await fetchOverpass(overpassQuery(bbox), signal);
   const ways = (json.elements ?? []).filter((e) => e.type === 'way').length;
   if (ways === 0) throw new Error('No roads found in this area.');
 

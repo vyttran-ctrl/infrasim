@@ -66,6 +66,7 @@ describe('OSM converter (fixture)', () => {
     expect(networkProblems(net)).toEqual([]);
     expect(stronglyConnected(net)).toBe(true);
     expect(net.attribution).toBe('© OpenStreetMap contributors');
+    expect(net.geo).toEqual(FIX_BBOX);
   });
 
   it('finds the signalized plus junction', () => {
@@ -130,21 +131,26 @@ function summary(net: RoadNetwork) {
 
 describe('OSM converter (Waterloo raw snapshot)', () => {
   const raw = JSON.parse(rawWaterloo) as OverpassJson;
-  const net = applyWaterlooZones(convertOverpass(raw, WATERLOO_BBOX, { id: 'waterloo' }));
+  // Same options as scripts/bake-waterloo.mjs.
+  const KEEP = ['Lester Street', 'Hazel Street', 'Phillip Street', 'Seagram Drive', 'Albert Street', 'Regina Street', 'Caroline Street', 'Erb Street', 'Bridgeport Road', 'Columbia Street', 'Westmount Road', 'University Avenue', 'King Street', 'Weber Street'];
+  const net = applyWaterlooZones(convertOverpass(raw, WATERLOO_BBOX, { id: 'waterloo', maxJunctions: 120, keepNames: KEEP }));
 
   it('produces a sane, simulatable network', () => {
     const s = summary(net);
-    expect(s.junctions).toBeGreaterThanOrEqual(30);
-    expect(s.junctions).toBeLessThanOrEqual(80);
-    expect(s.signals).toBeGreaterThan(10);
-    for (const street of ['University Avenue', 'King Street', 'Columbia Street', 'Westmount Road', 'Erb Street', 'Weber Street']) {
+    expect(s.junctions).toBeGreaterThanOrEqual(80);
+    expect(s.junctions).toBeLessThanOrEqual(120);
+    expect(s.signals).toBeGreaterThan(20);
+    const streets = ['University Avenue', 'King Street', 'Columbia Street', 'Westmount Road', 'Erb Street', 'Weber Street'];
+    streets.push('Albert Street', 'Phillip Street', 'Seagram Drive', 'Bridgeport Road', 'Caroline Street', 'Regina Street', 'Lester Street', 'Hazel Street');
+    for (const street of streets) {
       expect([...s.names].some((n) => n.startsWith(street))).toBe(true);
     }
     expect(networkProblems(net)).toEqual([]);
     expect(stronglyConnected(net)).toBe(true);
     // junction boxes should not be crammed together
     const short = net.edges.filter((e) => e.length < 8);
-    expect(short.length).toBeLessThanOrEqual(2);
+    expect(short.length).toBeLessThanOrEqual(net.edges.length * 0.02);
+    expect(net.geo).toEqual(WATERLOO_BBOX);
   });
 
   it('has Campus, Uptown and residential zones with OD for every preset', () => {
@@ -162,6 +168,7 @@ describe('OSM converter (Waterloo raw snapshot)', () => {
     expect(baked.nodes.length).toBe(net.nodes.length);
     expect(baked.edges.length).toBe(net.edges.length);
     expect(baked.attribution).toContain('OpenStreetMap');
+    expect(baked.geo).toEqual(WATERLOO_BBOX);
     expect(networkProblems(baked)).toEqual([]);
   });
 

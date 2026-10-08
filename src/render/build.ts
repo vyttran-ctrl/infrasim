@@ -6,6 +6,7 @@ import type * as THREE from 'three';
 import { palette, zoneColors } from '../app/palette';
 import { LANE_WIDTH, ROUNDABOUT_RING_WIDTH, edgePolyline, junctionLayout, laneOffset, nodeIndex } from '../sim/geometry';
 import type { NetEdge, NetNode, RoadNetwork } from '../sim/types';
+import { networkGeo } from '../net/mapContext';
 import { FlatBuf, SolidBuf, mixRGB, rgb, type RGB } from './buffers';
 import {
   cumulative,
@@ -92,6 +93,8 @@ export interface RoadBuild {
   nodePick: THREE.BufferGeometry;
   triNode: Int32Array;
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  /** Network is drawn over a real basemap with real building footprints (no procedural city). */
+  mapped: boolean;
 }
 
 const SIDEWALK = 2.5;
@@ -336,7 +339,9 @@ export function buildRoads(net: RoadNetwork): RoadBuild {
   }
 
   // ---------------------------------------------------------- city blocks & buildings
-  const { blocks, buildings } = buildBlocks(net, edges, edgeMap, nodes);
+  // Networks from map data get the basemap + real OSM footprints instead (see Basemap / RealBuildings).
+  const mapped = networkGeo(net) !== undefined;
+  const { blocks, buildings } = mapped ? { blocks: [], buildings: [] } : buildBlocks(net, edges, edgeMap, nodes);
   const blockTop = C.block;
   const blockSide = mixRGB(C.block, C.ink, 0.12);
   for (const poly of blocks) solid.prism(poly, 0, 0.22, blockTop, blockSide, 0.82);
@@ -409,6 +414,7 @@ export function buildRoads(net: RoadNetwork): RoadBuild {
     nodePick: nodePickBuf.toGeometry(),
     triNode: Int32Array.from(triNodeArr),
     bounds: { minX, minY, maxX, maxY },
+    mapped,
   };
 }
 

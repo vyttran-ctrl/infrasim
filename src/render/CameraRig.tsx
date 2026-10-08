@@ -8,6 +8,7 @@ import type { MapControls as MapControlsImpl } from 'three-stdlib';
 import { cameraState, onCameraCommand } from './events';
 import type { RoadBuild } from './build';
 import { sampleAt } from './polyline';
+import type { ViewBox } from './views';
 
 const ELEV = (55 * Math.PI) / 180;
 
@@ -20,8 +21,10 @@ interface Anim {
   dur: number;
 }
 
-export function CameraRig(props: { build: RoadBuild; networkId: string }) {
+export function CameraRig(props: { build: RoadBuild; networkId: string; view?: ViewBox | null }) {
   const { build, networkId } = props;
+  const viewRef = useRef(props.view);
+  viewRef.current = props.view;
   const controls = useRef<MapControlsImpl | null>(null);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -47,7 +50,7 @@ export function CameraRig(props: { build: RoadBuild; networkId: string }) {
   };
 
   const frame = (instant: boolean) => {
-    const b = buildRef.current.bounds;
+    const b = viewRef.current ?? buildRef.current.bounds;
     const cx = (b.minX + b.maxX) / 2;
     const cy = (b.minY + b.maxY) / 2;
     const w = Math.max(60, b.maxX - b.minX);

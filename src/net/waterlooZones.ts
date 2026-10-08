@@ -8,8 +8,8 @@ import { projector } from './osm';
 /** Uptown Waterloo + University of Waterloo. */
 export const WATERLOO_BBOX: BBox = { south: 43.458, west: -80.552, north: 43.479, east: -80.516 };
 
-const UW_CENTRE: [number, number] = [43.4717, -80.5427]; // lat, lon: UW main campus (inside Ring Rd)
-const UPTOWN_CENTRE: [number, number] = [43.4651, -80.5227]; // King St & Erb St
+export const UW_CENTRE: [number, number] = [43.4717, -80.5427]; // lat, lon: UW main campus (inside Ring Rd)
+export const UPTOWN_CENTRE: [number, number] = [43.4651, -80.5227]; // King St & Erb St
 
 const OD_IDS = ['campus', 'uptown', 'res_north', 'res_east', 'res_south', 'res_west'] as const;
 
@@ -81,4 +81,16 @@ export function applyWaterlooZones(net: RoadNetwork, bbox: BBox = WATERLOO_BBOX)
     event: build((_a, b) => (b === 'campus' ? 6 : 0.6)),
   };
   return { ...net, id: 'waterloo', name: 'Waterloo — Uptown & UW (OSM)', zones, od };
+}
+
+/** Default height for untyped (`building=yes`) footprints: taller in Uptown's core and on campus. */
+export function waterlooUntypedHeight(bbox: BBox = WATERLOO_BBOX): (x: number, y: number) => number {
+  const proj = projector(bbox);
+  const uw = proj.toXY(UW_CENTRE[0], UW_CENTRE[1]);
+  const up = proj.toXY(UPTOWN_CENTRE[0], UPTOWN_CENTRE[1]);
+  return (x, y) => {
+    if (Math.hypot(x - uw[0], y - uw[1]) < 650) return 12;
+    if (Math.hypot(x - up[0], y - up[1]) < 380) return 11;
+    return 7;
+  };
 }

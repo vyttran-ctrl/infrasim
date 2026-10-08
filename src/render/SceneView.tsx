@@ -8,6 +8,9 @@ import { palette } from '../app/palette';
 import { buildRoads, disposeBuild } from './build';
 import { CameraRig } from './CameraRig';
 import { Ground } from './Ground';
+import { networkGeo } from '../net/mapContext';
+import { RealMap } from './RealMap';
+import { preferredView } from './views';
 import { Interaction, type PickHandlers } from './Interaction';
 import { Labels } from './Labels';
 import { Roads } from './Roads';
@@ -47,6 +50,8 @@ export function SceneView(props: SceneViewProps): JSX.Element {
 function World({ handlers }: { handlers: React.MutableRefObject<PickHandlers> }) {
   const network = useApp((s) => s.network);
   const build = useMemo(() => buildRoads(network), [network]);
+  const geo = networkGeo(network);
+  const view = useMemo(() => preferredView(network), [network.id, geo]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => disposeBuild(build), [build]);
 
   const onGroundClick = (e: ThreeEvent<MouseEvent>) => {
@@ -62,9 +67,10 @@ function World({ handlers }: { handlers: React.MutableRefObject<PickHandlers> })
 
   return (
     <>
-      <CameraRig build={build} networkId={network.id} />
+      <CameraRig build={build} networkId={network.id} view={view} />
       <Ground bounds={build.bounds} onClick={onGroundClick} onMove={onGroundMove} />
       <Roads build={build} />
+      {geo && <RealMap network={network} build={build} />}
       <Signals build={build} />
       <Vehicles />
       <Interaction build={build} handlers={handlers} />

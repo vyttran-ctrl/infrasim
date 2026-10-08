@@ -25,3 +25,8 @@ export {
   edgeLabel,
   nodeLabel,
 } from './edits';
+export { getMapContext, getBuildings, loadWaterlooBasemap, networkGeo } from './mapContext';
+export type { MapContext } from './mapContext';
+export { loadWaterlooBuildings } from './buildings';
+export type { BuildingFootprint } from './buildings';
+export type { BasemapData } from './basemap';
