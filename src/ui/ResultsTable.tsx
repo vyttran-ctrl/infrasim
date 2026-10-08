@@ -3,7 +3,7 @@ import { COMPARE_METRICS, deltaPct, verdict } from './compareMetrics';
 import { num, signedPct } from './format';
 
 /** Metric rows × scenario columns. First column is the baseline. */
-export function ResultsTable({ scenarios }: { scenarios: Scenario[] }) {
+export function ResultsTable({ scenarios, subLabels = true }: { scenarios: Scenario[]; subLabels?: boolean }) {
   const base = scenarios[0]?.result;
   if (!base) return null;
   return (
@@ -17,7 +17,7 @@ export function ResultsTable({ scenarios }: { scenarios: Scenario[] }) {
             {scenarios.map((s, i) => (
               <th key={s.id} scope="col">
                 <span className="results-name">{s.name}</span>
-                <span className="caps muted">{i === 0 ? 'Baseline' : `vs baseline`}</span>
+                {subLabels && <span className="caps muted">{i === 0 ? 'Baseline' : 'vs baseline'}</span>}
               </th>
             ))}
           </tr>
@@ -29,8 +29,8 @@ export function ResultsTable({ scenarios }: { scenarios: Scenario[] }) {
               <tr key={m.key}>
                 <th scope="row">
                   {m.label} <span className="unit">{m.unit}</span>
-                  <span className="results-dir muted" title={m.lowerBetter ? 'Lower is better' : 'Higher is better'}>
-                    {m.lowerBetter ? 'lower better' : 'higher better'}
+                  <span className="results-dir muted">
+                    {m.lowerBetter ? 'lower is better' : 'higher is better'}
                   </span>
                 </th>
                 {scenarios.map((s, i) => {

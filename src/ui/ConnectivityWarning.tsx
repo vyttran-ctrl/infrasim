@@ -24,13 +24,13 @@ export function ConnectivityWarning() {
         !
       </span>
       <p>
-        <strong>Network is disconnected:</strong> {first.from} → {first.to} has no route
-        {more > 0 ? ` (and ${more} more zone pair${more > 1 ? 's' : ''})` : ''}. Trips between them will be dropped.
+        <strong>Some trips are now impossible:</strong> no open road leads from {first.from} to {first.to}
+        {more > 0 ? ` (and ${more} more place${more > 1 ? 's' : ''})` : ''}. Those cars will not be able to travel.
       </p>
       {canUndo && (
-        <button type="button" className="btn btn-secondary btn-sm" onClick={undoLastEdit} title="Undo last edit (Ctrl+Z)">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={undoLastEdit}>
           <IconUndo />
-          Undo last edit
+          Undo last change
         </button>
       )}
     </div>

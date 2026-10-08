@@ -1,4 +1,4 @@
-// Small shared controls: stepper, segmented control, switch, readout rows.
+// Small shared controls: stepper, segmented control, switch, readout rows, disclosure.
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { clamp, num } from './format';
@@ -114,24 +114,21 @@ export function Val({ v, unit }: { v: ReactNode; unit?: string }) {
   );
 }
 
-export function Field({ label, children, hint }: { label: ReactNode; children: (id: string) => ReactNode; hint?: ReactNode }) {
+/** A plain disclosure: a text button that shows or hides its children. */
+export function Disclosure({ label, children, defaultOpen = false, className }: { label: ReactNode; children: ReactNode; defaultOpen?: boolean; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   return (
-    <div className="field">
-      <label className="field-label" htmlFor={id}>
+    <div className={`disclosure${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
+      <button type="button" className="disclosure-btn" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+        <span className="disclosure-caret" aria-hidden="true" />
         {label}
-      </label>
-      <div className="field-control">{children(id)}</div>
-      {hint && <p className="field-hint">{hint}</p>}
-    </div>
-  );
-}
-
-export function SectionHead({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  return (
-    <div className="section-head">
-      <h2 className="caps">{children}</h2>
-      {aside}
+      </button>
+      {open && (
+        <div id={id} className="disclosure-body">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

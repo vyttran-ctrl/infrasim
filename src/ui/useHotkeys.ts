@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useApp } from '../app/store';
-import { toggleRun } from './RunBar';
-import { SPEEDS, TOOL_BY_KEY } from './tools';
+import { cancelNewRoad, isPickingRoadEnd } from './interactions';
+import { restart, toggleRun } from './session';
+import { closeResults, useTest } from './testRun';
 import { undoLastEdit, useUI } from './uiStore';
 
 function isTyping(t: EventTarget | null) {
@@ -11,6 +12,7 @@ function isTyping(t: EventTarget | null) {
   return t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement;
 }
 
+/** Space play/pause, R restart, Ctrl+Z undo, Esc closes the top-most thing. */
 export function useHotkeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -18,12 +20,13 @@ export function useHotkeys() {
       const ui = useUI.getState();
 
       if (e.key === 'Escape') {
-        if (app.compareOpen) app.setCompareOpen(false);
+        if (ui.menuOpen) ui.setMenuOpen(false);
         else if (ui.popover) ui.setPopover(null);
         else if (ui.importOpen) ui.setImportOpen(false);
-        else if (app.pendingNode) app.setPendingNode(null);
+        else if (app.compareOpen) app.setCompareOpen(false);
+        else if (isPickingRoadEnd()) cancelNewRoad();
         else if (app.selection) app.select(null);
-        else if (ui.sheetOpen) ui.setSheetOpen(false);
+        else if (useTest.getState().open) closeResults();
         return;
       }
       if (isTyping(e.target)) return;
@@ -36,24 +39,12 @@ export function useHotkeys() {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.key === ' ') {
-        // Space drives the run (buttons still activate with Enter); checkboxes keep it.
-        if (e.target instanceof HTMLInputElement && e.target.type === 'checkbox') return;
+        // Space drives the run (buttons still activate with Enter).
         e.preventDefault();
         toggleRun();
         return;
       }
-      const k = e.key.toLowerCase();
-      if (k === 'r') {
-        app.reset();
-        return;
-      }
-      const n = Number(e.key);
-      if (Number.isInteger(n) && n >= 1 && n <= SPEEDS.length) {
-        app.setSpeed(SPEEDS[n - 1]);
-        return;
-      }
-      const tool = TOOL_BY_KEY[k];
-      if (tool) app.setTool(tool);
+      if (e.key.toLowerCase() === 'r') restart();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

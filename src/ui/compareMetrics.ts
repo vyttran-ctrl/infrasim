@@ -14,16 +14,16 @@ export interface CompareMetric {
 }
 
 export const COMPARE_METRICS: CompareMetric[] = [
-  { key: 'tt', label: 'Travel time', unit: 'min', digits: 2, lowerBetter: true, get: (m) => m.avgTravelTime / 60, chart: true },
-  { key: 'delay', label: 'Delay', unit: 'min', digits: 2, lowerBetter: true, get: (m) => m.avgDelay / 60, chart: true },
-  { key: 'idelay', label: 'Intersection delay', unit: 's/trip', digits: 1, lowerBetter: true, get: (m) => m.intersectionDelay },
-  { key: 'thr', label: 'Throughput', unit: 'veh/h', digits: 0, lowerBetter: false, get: (m) => m.throughput, chart: true },
-  { key: 'maxq', label: 'Max queue', unit: 'veh', digits: 0, lowerBetter: true, get: (m) => m.maxQueue, chart: true },
-  { key: 'avgq', label: 'Avg queue', unit: 'veh', digits: 1, lowerBetter: true, get: (m) => m.avgQueue },
-  { key: 'spd', label: 'Avg speed', unit: 'km/h', digits: 1, lowerBetter: false, get: (m) => toKmh(m.avgSpeed) },
-  { key: 'done', label: 'Completed trips', unit: 'trips', digits: 0, lowerBetter: false, get: (m) => m.completedTrips },
-  { key: 'rr', label: 'Reroutes', unit: 'veh', digits: 0, lowerBetter: true, get: (m) => m.reroutes },
-  { key: 'co2', label: 'CO₂', unit: 'kg', digits: 1, lowerBetter: true, get: (m) => m.co2, chart: true },
+  { key: 'tt', label: 'Average trip time', unit: 'min', digits: 2, lowerBetter: true, get: (m) => m.avgTravelTime / 60, chart: true },
+  { key: 'delay', label: 'Average delay', unit: 'min', digits: 2, lowerBetter: true, get: (m) => m.avgDelay / 60, chart: true },
+  { key: 'idelay', label: 'Waiting at junctions', unit: 's per trip', digits: 1, lowerBetter: true, get: (m) => m.intersectionDelay },
+  { key: 'thr', label: 'Trips completed per hour', unit: 'trips/h', digits: 0, lowerBetter: false, get: (m) => m.throughput, chart: true },
+  { key: 'maxq', label: 'Longest queue', unit: 'cars', digits: 0, lowerBetter: true, get: (m) => m.maxQueue, chart: true },
+  { key: 'avgq', label: 'Average queue', unit: 'cars', digits: 1, lowerBetter: true, get: (m) => m.avgQueue },
+  { key: 'spd', label: 'Average speed', unit: 'km/h', digits: 1, lowerBetter: false, get: (m) => toKmh(m.avgSpeed) },
+  { key: 'done', label: 'Trips completed', unit: 'trips', digits: 0, lowerBetter: false, get: (m) => m.completedTrips },
+  { key: 'rr', label: 'Cars that changed route', unit: 'cars', digits: 0, lowerBetter: true, get: (m) => m.reroutes },
+  { key: 'co2', label: 'CO₂ emitted', unit: 'kg', digits: 1, lowerBetter: true, get: (m) => m.co2, chart: true },
 ];
 
 /** Percentage change vs baseline, or NaN when the baseline is zero. */

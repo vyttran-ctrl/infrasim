@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useApp } from '../app/store';
 import { sim } from '../app/simBridge';
 import { nodeLabel, setNodeKind } from '../net';
-import { DEMAND_PRESETS } from '../sim/demand';
 import type { Scenario, SimConfig } from '../sim/types';
 import { MetricBars, seriesColor, SpeedOverTime } from './CompareCharts';
 import { dateTime, minutes, num } from './format';
 import { IconClose } from './icons';
 import { ResultsTable } from './ResultsTable';
+import { trafficLabel } from './RunBar';
+import { SaveScenarioForm } from './SaveScenarioForm';
+import { centralSignal } from './testRun';
 import { flash, tryEdit } from './uiStore';
 
 const DEMO_QUESTION = 'Would replacing an existing four-way intersection with a roundabout improve network performance?';
@@ -24,8 +26,8 @@ interface Job {
 const configKey = (c: SimConfig) => `${c.seed}|${c.demand}|${c.duration}|${c.maxVehicles}|${c.spawnRate}|${c.dt}`;
 
 export function describeConfig(c: SimConfig) {
-  const preset = DEMAND_PRESETS[c.demand]?.label ?? c.demand;
-  return `seed ${c.seed}, ${preset}, ${num(c.duration / 60)} min, ${num(c.maxVehicles)} vehicles`;
+  const preset = `${trafficLabel(c.demand).toLowerCase()} traffic`;
+  return `seed ${c.seed}, ${preset}, ${num(c.duration / 60)} min, up to ${num(c.maxVehicles)} cars`;
 }
 
 export function CompareDrawer() {
@@ -75,7 +77,7 @@ export function CompareDrawer() {
       <header className="drawer-head">
         <div>
           <h2 className="drawer-title">Compare scenarios</h2>
-          <p className="drawer-sub">{isDemo ? DEMO_QUESTION : 'Same seed and demand for every scenario. Only the infrastructure differs.'}</p>
+          <p className="drawer-sub">{isDemo ? DEMO_QUESTION : 'Save versions of the map and compare them side by side. Every scenario runs with the same traffic.'}</p>
         </div>
         <button
           type="button"
@@ -95,8 +97,8 @@ export function CompareDrawer() {
         <div className="drawer-body">
           <div className="scen-col">
             <div className="scen-col-head">
-              <span className="caps">Scenarios</span>
-              <span className="muted small">Tick to include. First ticked is the baseline.</span>
+              <SaveScenarioForm />
+              <span className="muted small">Tick the scenarios to compare. The first one ticked is the baseline.</span>
             </div>
             <ul className="scen-list">
               {scenarios.map((s) => (
@@ -191,9 +193,10 @@ function ScenarioRow({ s, order, job, disabled, focusable }: { s: Scenario; orde
             disabled={disabled}
             onClick={() => {
               useApp.getState().restoreScenario(s.id);
+              useApp.getState().start();
               flash(`Restored "${s.name}" to the map.`);
             }}
-            title="Load this network and its settings onto the map"
+            title="Put this version back on the map"
           >
             Restore
           </button>
@@ -220,7 +223,8 @@ function ScenarioRow({ s, order, job, disabled, focusable }: { s: Scenario; orde
 function EmptyCompare() {
   return (
     <div className="drawer-empty">
-      <p>Save at least two scenarios to compare. Run the baseline, save it, change the infrastructure, then save again.</p>
+      <p>Save at least two versions of the map to compare them. Save the map as it is, change something, then save again.</p>
+      <SaveScenarioForm />
       <DemoButton focusable />
     </div>
   );
@@ -233,25 +237,19 @@ function DemoButton({ disabled, focusable }: { disabled?: boolean; focusable: bo
       <button type="button" className="btn btn-secondary" disabled={disabled} tabIndex={focusable ? 0 : -1} onClick={() => tryEdit(roundaboutDemo)}>
         Roundabout demo
       </button>
-      <p className="muted small">Saves the current network, then a copy with its most central signal converted to a roundabout.</p>
+      <p className="muted small">Saves the current map, then a copy with its central traffic lights swapped for a roundabout.</p>
     </div>
   );
 }
 
-function roundaboutDemo() {
+export function roundaboutDemo() {
   const app = useApp.getState();
   const original = app.network;
-  const signals = original.nodes.filter((n) => n.kind === 'signal');
-  if (signals.length === 0) {
-    flash('This network has no signalized junction to convert.');
+  const target = centralSignal(original);
+  if (!target) {
+    flash('This map has no traffic lights to swap for a roundabout.');
     return;
   }
-  const legs = (id: string) => original.edges.filter((e) => e.to === id).length;
-  const fourWay = signals.filter((n) => legs(n.id) >= 4);
-  const pool = fourWay.length ? fourWay : signals;
-  const cx = original.nodes.reduce((t, n) => t + n.x, 0) / original.nodes.length;
-  const cy = original.nodes.reduce((t, n) => t + n.y, 0) / original.nodes.length;
-  const target = pool.reduce((best, n) => (Math.hypot(n.x - cx, n.y - cy) < Math.hypot(best.x - cx, best.y - cy) ? n : best));
   const where = nodeLabel(original, target.id);
   const converted = setNodeKind(original, target.id, 'roundabout');
 
@@ -259,5 +257,5 @@ function roundaboutDemo() {
   useApp.setState({ network: converted });
   const b = useApp.getState().saveScenario(DEMO_B, `${where} converted to a roundabout`);
   useApp.setState({ network: original, compareIds: [a.id, b.id], compareOpen: true });
-  flash(`Demo pair saved. Original network kept on the map.`);
+  flash('Demo pair saved. The map itself is unchanged.');
 }

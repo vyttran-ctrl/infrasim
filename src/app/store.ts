@@ -26,6 +26,8 @@ export type HeatMode = 'utilization' | 'speed' | 'queue' | 'off';
 
 interface AppState {
   network: RoadNetwork;
+  /** The network as loaded, before any edits. The "before" side of Test my changes. */
+  originalNetwork: RoadNetwork | null;
   source: NetworkSource;
   config: SimConfig;
   status: RunStatus;
@@ -88,10 +90,11 @@ function persist(s: Scenario[]) {
 
 export const useApp = create<AppState>((set, get) => ({
   network: EMPTY,
+  originalNetwork: null,
   source: 'grid',
   config: DEFAULT_CONFIG,
   status: 'idle',
-  speed: 1,
+  speed: 5,
   tool: 'inspect',
   selection: null,
   hover: null,
@@ -105,7 +108,7 @@ export const useApp = create<AppState>((set, get) => ({
   edits: [],
 
   loadNetwork(net, source) {
-    set({ network: net, source, status: 'idle', selection: null, metrics: null, simTime: 0, edits: [], pendingNode: null });
+    set({ network: net, originalNetwork: net, source, status: 'idle', selection: null, metrics: null, simTime: 0, edits: [], pendingNode: null });
     sim.load(net, get().config);
   },
   setConfig(patch) {
